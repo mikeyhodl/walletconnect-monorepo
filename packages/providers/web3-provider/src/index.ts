@@ -174,11 +174,11 @@ class WalletConnectProvider extends ProviderEngine {
     }
   }
 
-  async request(payload: any): Promise<any> {
+  public request = async (payload: any): Promise<any> => {
     return this.send(payload);
-  }
+  };
 
-  async send(payload: any, callback?: any): Promise<any> {
+  public send = async (payload: any, callback?: any): Promise<any> => {
     // Web3 1.0 beta.38 (and above) calls `send` with method and parameters
     if (typeof payload === "string") {
       const method = payload;
@@ -186,6 +186,8 @@ class WalletConnectProvider extends ProviderEngine {
       // maintaining the previous behavior where personal_sign could be non-hex string
       if (method === "personal_sign") {
         params = parsePersonalSign(params);
+      } else if (method === "eth_requestAccounts") {
+        return this.enable();
       }
 
       return this.sendAsyncPromise(method, params);
@@ -197,6 +199,8 @@ class WalletConnectProvider extends ProviderEngine {
     // maintaining the previous behavior where personal_sign could be non-hex string
     if (payload.method === "personal_sign") {
       payload.params = parsePersonalSign(payload.params);
+    } else if (payload.method === "eth_requestAccounts") {
+      return this.enable();
     }
 
     // Web3 1.0 beta.37 (and below) uses `send` with a callback for async queries
@@ -206,7 +210,7 @@ class WalletConnectProvider extends ProviderEngine {
     }
 
     return this.sendAsyncPromise(payload.method, payload.params);
-  }
+  };
 
   onConnect(callback: any) {
     this.connectCallbacks.push(callback);
@@ -234,6 +238,9 @@ class WalletConnectProvider extends ProviderEngine {
       let result: any = null;
       const wc = await this.getWalletConnector();
       switch (payload.method) {
+        case "eth_requestAccounts":
+          result = await this.enable();
+          break;
         case "wc_killSession":
           await this.close();
           result = null;

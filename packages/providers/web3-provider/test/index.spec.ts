@@ -27,7 +27,7 @@ describe("WalletConnectWeb3Provider", () => {
     });
 
     await Promise.all([
-      new Promise((resolve, reject) => {
+      new Promise<void>((resolve, reject) => {
         provider.wc.on("display_uri", (error, payload) => {
           if (error) {
             reject(error);
@@ -48,7 +48,7 @@ describe("WalletConnectWeb3Provider", () => {
           });
         });
       }),
-      new Promise(async resolve => {
+      new Promise<void>(async resolve => {
         const providerAccounts = await provider.enable();
         expect(providerAccounts).toEqual(TEST_SESSION_PARAMS.accounts);
 
@@ -64,4 +64,51 @@ describe("WalletConnectWeb3Provider", () => {
       }),
     ]);
   });
+
+  // it("request accounts succesfully", async () => {
+  //   const provider = new WalletConnectWeb3Provider({
+  //     qrcode: false,
+  //     rpc: {
+  //       1: "https://api.mycryptoapi.com/eth",
+  //     },
+  //   });
+
+  //   await Promise.all([
+  //     new Promise<void>((resolve, reject) => {
+  //       provider.wc.on("display_uri", (error, payload) => {
+  //         if (error) {
+  //           reject(error);
+  //         }
+
+  //         const uri = payload.params[0];
+
+  //         const client = new WalletConnect({ uri });
+
+  //         client.on("session_request", error => {
+  //           if (error) {
+  //             reject(error);
+  //           }
+
+  //           client.approveSession(TEST_SESSION_PARAMS);
+
+  //           resolve();
+  //         });
+  //       });
+  //     }),
+  //     new Promise<void>(async resolve => {
+  //       const providerAccounts = await provider.request({ method: "eth_requestAccounts" });
+  //       expect(providerAccounts).toEqual(TEST_SESSION_PARAMS.accounts);
+
+  //       const web3 = new Web3(provider as any);
+
+  //       const web3Accounts = await web3.eth.getAccounts();
+  //       expect(web3Accounts).toEqual(TEST_SESSION_PARAMS.accounts);
+
+  //       const web3ChainId = await web3.eth.getChainId();
+  //       expect(web3ChainId).toEqual(TEST_SESSION_PARAMS.chainId);
+
+  //       resolve();
+  //     }),
+  //   ]);
+  // });
 });
