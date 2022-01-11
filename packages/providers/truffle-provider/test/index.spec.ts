@@ -1,10 +1,14 @@
+import "mocha";
+import { expect } from "chai";
+
 import WalletConnectTruffleProvider from "../src";
 
 describe("WalletConnectTruffleProvider", () => {
   it("instantiate successfully", () => {
     const provider = new WalletConnectTruffleProvider({
+      bridge: "https://bridge.walletconnect.org",
       rpcUrl: "https://api.mycryptoapi.com/eth",
     });
-    expect(provider).toBeTruthy();
+    expect(!!provider).to.be.true;
   });
 });

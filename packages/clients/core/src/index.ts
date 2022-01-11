@@ -63,6 +63,7 @@ import {
 } from "./errors";
 import EventManager from "./events";
 import SessionStorage from "./storage";
+import { getBridgeUrl } from "./url";
 
 // -- Connector ------------------------------------------------------------ //
 
@@ -110,21 +111,26 @@ class Connector implements IConnector {
   private _qrcodeModal: IQRCodeModal | undefined;
   private _qrcodeModalOptions: IQRCodeModalOptions | undefined;
 
+  // -- methods ----------------------------------------------------------//
+
+  private readonly _signingMethods: string[];
+
   // -- constructor ----------------------------------------------------- //
 
   constructor(opts: IConnectorOpts) {
     this._clientMeta = getClientMeta() || opts.connectorOpts.clientMeta || null;
     this._cryptoLib = opts.cryptoLib;
-    this._sessionStorage = opts.sessionStorage || new SessionStorage();
+    this._sessionStorage = opts.sessionStorage || new SessionStorage(opts.connectorOpts.storageId);
     this._qrcodeModal = opts.connectorOpts.qrcodeModal;
     this._qrcodeModalOptions = opts.connectorOpts.qrcodeModalOptions;
+    this._signingMethods = [...signingMethods, ...(opts.connectorOpts.signingMethods || [])];
 
     if (!opts.connectorOpts.bridge && !opts.connectorOpts.uri && !opts.connectorOpts.session) {
       throw new Error(ERROR_MISSING_REQUIRED);
     }
 
     if (opts.connectorOpts.bridge) {
-      this.bridge = opts.connectorOpts.bridge;
+      this.bridge = getBridgeUrl(opts.connectorOpts.bridge);
     }
 
     if (opts.connectorOpts.uri) {
@@ -369,6 +375,10 @@ class Connector implements IConnector {
       callback,
     };
     this._eventManager.subscribe(eventEmitter);
+  }
+
+  public off(event: string): void {
+    this._eventManager.unsubscribe(event);
   }
 
   public async createInstantRequest(instantRequest: Partial<IJsonRpcRequest>): Promise<void> {
@@ -697,6 +707,11 @@ class Connector implements IConnector {
   ): Promise<IJsonRpcResponseSuccess | IJsonRpcResponseError> {
     this._sendRequest(request, options);
 
+    this._eventManager.trigger({
+      event: "call_request_sent",
+      params: [{ request, options }],
+    });
+
     return new Promise((resolve, reject) => {
       this._subscribeToResponse(request.id, (error: Error | null, payload: any | null) => {
         if (error) {
@@ -760,6 +775,10 @@ class Connector implements IConnector {
     }
   }
 
+  public transportClose() {
+    this._transport.close();
+  }
+
   // -- private --------------------------------------------------------- //
 
   protected async _sendRequest(
@@ -807,12 +826,6 @@ class Connector implements IConnector {
       params: [{ request, options }],
     });
 
-    if (isMobile() && signingMethods.includes(request.method)) {
-      const mobileLinkUrl = getLocal(mobileLinkChoiceKey);
-      if (mobileLinkUrl) {
-        window.location.href = mobileLinkUrl.href;
-      }
-    }
     return this._subscribeToCallResponse(request.id);
   }
 
@@ -876,12 +889,15 @@ class Connector implements IConnector {
     if (this._handshakeTopic) {
       this._handshakeTopic = "";
     }
+    if (this._peerId) {
+      this._peerId = "";
+    }
     this._eventManager.trigger({
       event: "disconnect",
       params: [{ message }],
     });
     this._removeStorageSession();
-    this._transport.close();
+    this.transportClose();
   }
 
   private _handleSessionResponse(errorMsg: string, sessionParams?: ISessionParams) {
@@ -1037,6 +1053,16 @@ class Connector implements IConnector {
       }
     });
 
+    this.on("call_request_sent", (error, payload) => {
+      const { request } = payload.params[0];
+      if (isMobile() && this._signingMethods.includes(request.method)) {
+        const mobileLinkUrl = getLocal(mobileLinkChoiceKey);
+        if (mobileLinkUrl) {
+          window.location.href = mobileLinkUrl.href;
+        }
+      }
+    });
+
     this.on("wc_sessionRequest", (error, payload) => {
       if (error) {
         this._eventManager.trigger({
@@ -1118,7 +1144,7 @@ class Connector implements IConnector {
       const bridge = decodeURIComponent(result.bridge);
 
       if (!result.key) {
-        throw Error("Invalid or missing kkey parameter value");
+        throw Error("Invalid or missing key parameter value");
       }
       const key = result.key;
 

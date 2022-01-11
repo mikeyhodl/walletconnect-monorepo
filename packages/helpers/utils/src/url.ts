@@ -1,9 +1,7 @@
-import * as queryStringUtils from "query-string";
-
 export function getQueryString(url: string): string {
   const pathEnd: number | undefined = url.indexOf("?") !== -1 ? url.indexOf("?") : undefined;
 
-  const queryString: string = typeof pathEnd !== "undefined" ? url.substr(pathEnd) : "";
+  const queryString: string = typeof pathEnd !== "undefined" ? url.substring(pathEnd) : "";
 
   return queryString;
 }
@@ -19,9 +17,10 @@ export function appendToQueryString(queryString: string, newQueryParams: any): s
 }
 
 export function parseQueryString(queryString: string): any {
-  return queryStringUtils.parse(queryString);
+  const params = new URLSearchParams(queryString);
+  return Object.fromEntries(params.entries());
 }
 
 export function formatQueryString(queryParams: any): string {
-  return queryStringUtils.stringify(queryParams);
+  return new URLSearchParams(queryParams).toString();
 }

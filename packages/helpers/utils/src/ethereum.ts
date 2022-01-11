@@ -1,10 +1,10 @@
 import { keccak_256 } from "js-sha3";
+import { removeHexPrefix, addHexPrefix } from "@walletconnect/encoding";
 
 import { ITxData } from "@walletconnect/types";
 import { convertUtf8ToHex, convertNumberToHex, convertUtf8ToBuffer } from "./encoding";
 import { sanitizeHex, removeHexLeadingZeros } from "./misc";
 import { isEmptyArray, isHexString, isEmptyString } from "./validators";
-import { removeHexPrefix, addHexPrefix } from "enc-utils";
 
 export function toChecksumAddress(address: string): string {
   address = removeHexPrefix(address.toLowerCase());
@@ -42,6 +42,8 @@ export function parsePersonalSign(params: string[]): string[] {
 }
 
 export function parseTransactionData(txData: Partial<ITxData>): Partial<ITxData> {
+  if (typeof txData.type !== "undefined" && txData.type !== "0") return txData;
+
   if (typeof txData.from === "undefined" || !isValidAddress(txData.from)) {
     throw new Error(`Transaction object must include a valid 'from' value.`);
   }
